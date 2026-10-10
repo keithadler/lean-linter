@@ -1,0 +1,14 @@
+name = "lean-linter"
+defaultTargets = ["lean-linter"]
+
+[[lean_lib]]
+name = "LeanLinter"
+
+[[lean_exe]]
+name = "lean-linter"
+root = "Main"
+supportInterpreter = true
+
+[[lean_lib]]
+name = "LeanLinterTest"
+srcDir = "test"

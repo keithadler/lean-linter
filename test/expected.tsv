@@ -1,0 +1,13 @@
+mislabel	Fixtures.fooLeft_eq
+mislabel	Fixtures.F_injective
+namespace	Fixtures.Box16.x_self
+name-shape	Fixtures.F_injective
+name-shape	Fixtures.le_self_add_three_iff
+name-shape	Fixtures.le_self_succ_lt
+doc-mislabel	Fixtures.F_surj
+doc-refs	Fixtures.docref_demo
+deprecation	Fixtures.dep_old
+duplicate	Fixtures.dup_a
+duplicate-sym	Fixtures.sym_a
+duplicate-instance	Fixtures.pointedNatA
+dead-private	Fixtures.unused_helper
