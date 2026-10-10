@@ -1,94 +1,133 @@
 import LeanLinter.Basic
 
 /-!
-# Checks on references that can rot
+# Docstrings that disagree with the code
 
-* `doc-refs`: a docstring names a declaration in backticks that does not exist, usually because it
-  was renamed or deleted and the docstring was not updated. Only names that look like declaration
-  names are checked (they contain `.` or `_`); a name counts as existing if any constant, module,
-  token or option ends with it, so references through `open` namespaces are not reported.
-* `deprecation`: a deprecated alias points to a declaration that does not exist, or to one that is
-  itself deprecated, so users following the hint land on another deprecation.
+* `doc-mislabel`: the docstring names one property of a family ("injective", "monotone", "open")
+  when the statement concludes another. In Mathlib, the docstring of
+  `antitone_of_odd_of_monotoneOn_nonneg` says "monotone on `Set.Ici 0`" about a hypothesis that is
+  `AntitoneOn`.
+* `doc-refs`: the docstring names, in backticks, a declaration that does not exist, usually one
+  renamed or deleted since. In Mathlib, a docstring still pointed at `Submodule.basisOfPidOfLe`,
+  which had been renamed to `basisOfPidOfLE`.
 -/
 
 open Lean
 
 namespace LeanLinter
 
-/-- A word with case, `_`, `!` and `?` dropped, so that `ring_nf!` matches the syntax kind `ringNF`. -/
-def normalizeWord (w : String) : String :=
-  String.mk (w.toList.filter (fun c => c != '_' && c != '!' && c != '?') |>.map Char.toLower)
+/-! ## `doc-mislabel` -/
 
-/-- Every dot-suffix of every constant and module name, plus syntax kinds and option names. -/
-def knownSuffixes (env : Environment) : IO (Std.HashSet String) := do
-  let mut s : Std.HashSet String := {}
-  let addAll (s : Std.HashSet String) (n : Name) : Std.HashSet String := Id.run do
-    let comps := (userName n).components.map toString
-    let mut s := s
-    for i in [0:comps.length] do
-      s := s.insert (".".intercalate (comps.drop i))
-    return s
-  for (n, _) in env.constants.map₁.toList do
-    s := addAll s n
-  for m in env.header.moduleNames do
-    s := addAll s m
-  -- tactics, attributes and commands, by the last component of their syntax kind, normalized
-  for (k, _) in (Parser.parserExtension.getState env).kinds.toList do
-    let w := normalizeWord (lastString k)
-    s := s.insert ("~" ++ w)
-    -- `tacticSimp_rw__`, `tacticInfer_instance`: kinds generated from the syntax
-    if w.startsWith "tactic" then s := s.insert ("~" ++ (w.drop 6).toString)
-  for (n, _) in (← getOptionDecls).toList do
-    s := addAll s n
-  return s
+/-- The lower-case words of a docstring's prose, leaving out code spans: a docstring that says
+"dual of `Monotone.foo`" names a lemma, it does not call this one monotone. "Increasing" and
+"decreasing" count as "monotone" and "antitone" too. -/
+def docWords (doc : String) : List String :=
+  let prose := (doc.splitOn "`").zipIdx.filter (·.2 % 2 == 0) |>.map (·.1)
+  let words := prose.flatMap fun p => (p.split (fun c : Char => !c.isAlpha)).toList.map (·.toString.toLower)
+  words.filter (· ≠ "") |>.flatMap fun
+    | w@"increasing" | w@"nondecreasing" => [w, "monotone"]
+    | w@"decreasing" | w@"nonincreasing" => [w, "antitone"]
+    | w => [w]
 
-/-- Backticked spans of a docstring that look like declaration names. -/
-def docNames (doc : String) : Array String := Id.run do
-  let parts := doc.splitOn "`"
+/-- Families of properties, each member with the constant a conclusion has when it states it. -/
+def docFamilies : List (List (String × Name)) :=
+  [[("injective", `Function.Injective), ("surjective", `Function.Surjective),
+    ("bijective", `Function.Bijective)],
+   [("injective", `Set.InjOn), ("surjective", `Set.SurjOn)],
+   [("monotone", `Monotone), ("antitone", `Antitone)],
+   [("monotone", `MonotoneOn), ("antitone", `AntitoneOn)],
+   [("open", `IsOpen), ("closed", `IsClosed)],
+   [("continuous", `Continuous), ("differentiable", `Differentiable)]]
+
+def docMislabel (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
-  for i in [0:parts.length] do
-    if i % 2 == 0 then continue
-    let p := parts[i]!
-    if p.length < 3 || p.length > 80 then continue
-    unless p.any (fun c => c == '.' || c == '_') do continue
-    unless p.all (fun c => c.isAlphanum || c == '_' || c == '.' || c == '\'' || c == '!' || c == '?'
-        || (c.toNat > 127 && !c.isWhitespace)) do continue
-    if p.startsWith "." || p.endsWith "." || p.front.isDigit then continue
-    out := out.push p
+  for d in ctx.decls do
+    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    let some head := (conclusion d.info.type).getAppFn.constName? | continue
+    let some doc ← findDocString? ctx.env d.name (includeBuiltin := false) | continue
+    let words := docWords doc
+    for family in docFamilies do
+      let some (actual, _) := family.find? (·.2 == head) | continue
+      if words.contains actual then continue
+      for (other, _) in family do
+        if other != actual && words.contains other then
+          out := out.push <| ctx.finding "doc-mislabel" d
+            s!"the docstring says \"{other}\" and never \"{actual}\", but the conclusion is `{head}`"
   return out
 
+def docMislabelCheck : Check where
+  name := "doc-mislabel"
+  summary := "the docstring names one property of a family, the conclusion another"
+  run := docMislabel
+
+/-! ## `doc-refs` -/
+
+/-- A word with case, `_`, `!` and `?` dropped, so that `ring_nf!` and the syntax kind `ringNF`
+compare equal. -/
+def normalizeWord (w : String) : String :=
+  String.ofList (w.toList.filter (fun c => c != '_' && c != '!' && c != '?') |>.map Char.toLower)
+
+/-- Everything a backticked name in a docstring can refer to:
+
+* every dot-suffix of every constant, module and option name (`Foo.bar` is reachable as `bar`
+  inside `namespace Foo` or after `open Foo`, so `bar` counts as existing);
+* every tactic, attribute and command, as `~` followed by the normalized last component of its
+  syntax kind (`ring_nf` is the kind `Mathlib.Tactic.RingNF.ringNF`, `simp_rw` the kind
+  `tacticSimp_rw__`). -/
+def knownNames (env : Environment) : IO (Std.HashSet String) := do
+  let addSuffixes (s : Std.HashSet String) (n : Name) : Std.HashSet String :=
+    let parts := (userName n).components.map toString
+    (List.range parts.length).foldl (fun s i => s.insert (".".intercalate (parts.drop i))) s
+  let mut known : Std.HashSet String := {}
+  for (n, _) in env.constants.map₁.toList do
+    known := addSuffixes known n
+  for m in env.header.moduleNames do
+    known := addSuffixes known m
+  for (n, _) in (← getOptionDecls).toList do
+    known := addSuffixes known n
+  for (kind, _) in (Parser.parserExtension.getState env).kinds.toList do
+    let w := normalizeWord (lastString kind)
+    known := known.insert ("~" ++ w)
+    if w.startsWith "tactic" then known := known.insert ("~" ++ (w.drop 6).toString)
+  return known
+
+/-- The backticked spans of a docstring that look like declaration names: identifier characters
+only, and at least one `.` or `_` (so `x`, `f` and `n` are left alone). -/
+def docReferences (doc : String) : Array String := Id.run do
+  let mut out := #[]
+  for (span, i) in (doc.splitOn "`").zipIdx do
+    if i % 2 == 0 || span.length < 3 || span.length > 80 then continue
+    let identChar (c : Char) := c.isAlphanum || "_.'!?".contains c || (c.toNat > 127 && !c.isWhitespace)
+    unless span.all identChar && span.any (fun c => c == '.' || c == '_') do continue
+    if span.startsWith "." || span.endsWith "." || span.front.isDigit then continue
+    out := out.push span
+  return out
+
+/-- Does the backticked name `r` refer to something in `known`? Besides names themselves, this
+accepts dot notation on a local variable (`f.symm`, `S.g`, `φ.τ₂`), dot notation on a name
+(`Finset.univ.sum`), and notation such as `a..b`. -/
+def resolves (known : Std.HashSet String) (r : String) : Bool :=
+  let r := if r.startsWith "_root_." then (r.drop 7).toString else r
+  let parts := r.splitOn "."
+  let last := parts.getLast!
+  known.contains r || known.contains ("~" ++ normalizeWord r)
+    || (r.splitOn "..").length > 1
+    || (parts.length > 1 && (parts.head!.length ≤ 3 || parts.head!.front.isLower) && known.contains last)
+    || (parts.length > 2 && known.contains (".".intercalate (parts.take 2)) && known.contains last)
+
 def docRefs (ctx : Ctx) : IO (Array Finding) := do
-  let known ← knownSuffixes ctx.env
+  let known ← knownNames ctx.env
   let mut out := #[]
   for d in ctx.decls do
     let some doc ← findDocString? ctx.env d.name (includeBuiltin := false) | continue
-    for r in docNames doc do
-      let r' := if r.startsWith "_root_." then (r.drop 7).toString else r
-      if known.contains r' || known.contains ("~" ++ normalizeWord r') then continue
-      -- `a..b` and the like are notation, not names
-      if (r'.splitOn "..").length > 1 then continue
-      -- `f.symm`, `S.g`, `φ.τ₂`: a field or dot-notation call on a short local name
-      let comps := r'.splitOn "."
-      if comps.length > 1 && comps.head!.length ≤ 3 && known.contains comps.getLast! then
-        continue
-      -- `Finset.univ.sum`: dot notation on a name that exists
-      if comps.length > 2 && known.contains (".".intercalate (comps.take 2)) && known.contains comps.getLast! then
-        continue
-      if comps.length > 1 && comps.head!.front.isLower && known.contains (".".intercalate comps.tail) then
-        continue
-      out := out.push <| ctx.finding "doc-refs" d s!"the docstring mentions `{r}`, which does not exist"
+    for r in docReferences doc do
+      unless resolves known r do
+        out := out.push <| ctx.finding "doc-refs" d s!"the docstring mentions `{r}`, which does not exist"
   return out
 
-def deprecation (ctx : Ctx) : IO (Array Finding) := do
-  let mut out := #[]
-  for d in ctx.decls do
-    let some e := Linter.deprecatedAttr.getParam? ctx.env d.name | continue
-    let some new := e.newName? | continue
-    if !ctx.env.contains new then
-      out := out.push <| ctx.finding "deprecation" d s!"deprecated in favor of `{new}`, which does not exist"
-    else if ctx.isDeprecated new then
-      out := out.push <| ctx.finding "deprecation" d
-        s!"deprecated in favor of `{new}`, which is itself deprecated"
-  return out
+def docRefsCheck : Check where
+  name := "doc-refs"
+  summary := "the docstring names a declaration that does not exist"
+  run := docRefs
 
 end LeanLinter

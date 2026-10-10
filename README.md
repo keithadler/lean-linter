@@ -1,82 +1,181 @@
 # lean-linter
 
-Linters for Lean 4 libraries that read the compiled environment and report what the type checker
-cannot see: lemmas whose names say the opposite of their statements, docstrings that point at
-declarations that no longer exist, deprecations that lead to other deprecations, things stated or
-defined twice, and private code nothing uses.
+**Find what the type checker cannot: lemmas whose names say the opposite of their statements,
+docstrings that describe the wrong property or point at declarations that no longer exist,
+deprecations that lead to other deprecations, things stated twice, and private code nothing uses.**
 
-It works on any Lean project and depends only on Lean itself.
+Lean checks that every proof is correct. It does not check that `foo_left` is about the left,
+that a lemma called `_iff` is an `↔`, or that the name in a docstring still exists. Those mistakes
+compile, pass CI, and send the next person looking for a lemma to the wrong one. `lean-linter`
+reads a compiled library and reports them.
 
-## Checks
+It works on any Lean 4 project, depends only on Lean, and runs on all of Mathlib (330,000
+declarations) in about six minutes.
 
-| Check | Reports |
-|---|---|
-| `mislabel` | A lemma whose name names a constant (`homEquivLeft`, `fst`, `inl`, `Monotone`) while its statement uses only that constant's opposite (`homEquivRight`, `snd`, `inr`, `Antitone`): usually a copy of its neighbor that kept the neighbor's name. |
-| `namespace` | `Foo.bar` in the namespace of a type `Foo` whose statement never mentions `Foo` but is about a sibling of it: `UInt16.x` stated for `UInt8`, a `CommMonCat` instance stated for `MonCat`. |
-| `name-shape` | A name ending in `_iff` whose conclusion has no `↔`; `_lt` or `_pos` concluding a `≤`; `_le` or `_nonneg` concluding a `<`; `_injective` concluding `Surjective`, `_monotone` concluding `Antitone`, and so on. Words after `_of_` name hypotheses and are not checked. |
-| `doc-mislabel` | A docstring that calls the result one property of a family ("injective", "monotone", "open") when the statement concludes another. |
-| `doc-refs` | A name in backticks in a docstring that matches no declaration, module, tactic, attribute or option: usually left behind by a rename. |
-| `deprecation` | A deprecated alias whose replacement does not exist or is itself deprecated. |
-| `duplicate` | Two theorems with the same statement (up to the names of bound variables and universes), each proved without the other. |
-| `duplicate-sym` | The same, with one stating `a = b` (or `a ↔ b`) and the other `b = a`. |
-| `duplicate-instance` | Two instances of the same type. |
-| `dead-private` | A private theorem or definition that nothing refers to. |
+## What it finds
 
-Only declarations written by hand are checked. Equation lemmas, matchers, recursors and other
-generated declarations are skipped, as are deprecated ones.
+Run on Mathlib and on Lean's own library in October 2026, it found, among others:
 
-## Use
+- `HoCat.homEquivLeft_symm_apply` stated a fact about `homEquivRight`: a copy of the lemma above
+  it that kept its statement, so the simp lemma for `homEquivLeft` did not exist.
+- `AntitoneOn.monotone` concludes `Antitone`, and `PresheafOfModules.mono_iff_surjective` states
+  that `f` is mono iff it is *injective* on every object.
+- `DFinsupp.coe_strictMono` and `Finsupp.coe_strictMono` are copies of `coe_mono`. They conclude
+  plain `Monotone`, so the strict lemma their names promise does not exist.
+- `reflexivePair_map_left` and `reflexivePair_map_right` have their names swapped.
+- Three instances in the `CommMonCat` namespace state that the forgetful functor of `MonCat`
+  creates limits. They were copied from `MonCat`, so the `CommMonCat` instances are missing.
+- In Lean core, `Std.Roc.lower_le_of_mem` (and its `Roo`, `Roi` twins) concludes `r.lower < a`,
+  and `List.findIdx?_eq_fst_find?_zipIdx` uses `.2`, the second component.
 
-Add it to your project's `lakefile.toml`:
+## Quick start
+
+In a Lake project, add the dependency to `lakefile.toml`:
 
 ```toml
 [[require]]
 name = "lean-linter"
 git = "https://github.com/keithadler/lean-linter"
-rev = "main"
+rev = "v0.1.0"
 ```
 
-Then, from your project's directory, build your library and run:
+Then build your library and lint it:
 
 ```bash
-lake build && lake exe lean-linter MyLibrary
+lake build
+lake exe lean-linter MyLibrary
 ```
 
-To run it outside a project, for example on Mathlib, build it here with the same Lean version as
-the target, then run it from the target's directory so that it finds the target's `.olean` files:
+To lint a project you don't want to change, Mathlib say, build lean-linter with the same Lean
+version as the project, then run it from the project's directory so it finds the project's
+`.olean` files:
 
 ```bash
-cd path/to/mathlib4 && lake env path/to/lean-linter/.lake/build/bin/lean-linter Mathlib
+git clone https://github.com/keithadler/lean-linter && cd lean-linter
+cp ../mathlib4/lean-toolchain . && lake build
+cd ../mathlib4 && lake env ../lean-linter/.lake/build/bin/lean-linter Mathlib
 ```
 
-Options:
+## Output
 
-- `--checks mislabel,doc-refs` runs only the named checks.
-- `--root Prefix` restricts the report to modules under `Prefix`. The default is the first
-  component of each module given.
+One finding per line: check, declaration, `Module:line`, and what is wrong.
 
-Each finding is one tab-separated line: check, declaration, `Module:line`, message. A summary goes
-to standard error. The exit code is 1 if anything was found.
+```text
+mislabel     Fixtures.fooLeft_eq       LeanLinterTest.Fixtures:13   the name says `Fixtures.fooLeft` but the statement uses `Fixtures.fooRight` and never `fooLeft`
+name-shape   Fixtures.le_self_succ_lt  LeanLinterTest.Fixtures:32   the name ends in `_lt` (strict), but the conclusion is a `≤`
+doc-refs     Fixtures.docref_demo      LeanLinterTest.Fixtures:44   the docstring mentions `Fixtures.no_such_lemma_here`, which does not exist
+deprecation  Fixtures.dep_old          LeanLinterTest.Fixtures:51   deprecated in favor of `Fixtures.dep_mid`, which is itself deprecated
+```
 
-## How much to trust a finding
+The real output separates fields with tabs. A summary with one count per check goes to
+standard error, so `lean-linter MyLib > findings.tsv` keeps the two apart. With `--json`, each
+finding is one JSON object per line instead:
 
-The checks are heuristics about names and statements, not proofs. In order of how often a finding
-is a real problem:
+```json
+{"check":"deprecation","declaration":"Fixtures.dep_old","line":51,"message":"deprecated in favor of `Fixtures.dep_mid`, which is itself deprecated","module":"LeanLinterTest.Fixtures"}
+```
 
-- `mislabel`, `name-shape`, `doc-mislabel`, `deprecation`, `duplicate-instance` and `namespace`
-  find few false positives, but read each one before acting on it. A conclusion about a limit
-  ordinal is not about `limit`, and `_odd` can name the parity of an index.
-- `duplicate` and `duplicate-sym` are exact, but some duplication is deliberate, such as a second
-  name for dot notation or for discoverability. Then the usual fix is to make one an `alias` of
-  the other.
-- `doc-refs` and `dead-private` find real rot, mixed with notation in backticks and lemmas
-  registered for tactics by attributes (`aesop`, simprocs).
+## Checks
 
-## Tests
+| Check | Reports | Example |
+|---|---|---|
+| `mislabel` | The name names a constant, but the statement uses only its opposite (`Left`/`Right`, `fst`/`snd`, `inl`/`inr`, `Monotone`/`Antitone`, `map`/`comap`, ...). | `fooLeft_eq : fooRight n = n + 1` |
+| `namespace` | In the namespace of a type, but stated about a sibling of that type (`UInt8`/`UInt16`, `WithTop`/`WithBot`, `CommMonCat`/`MonCat`). | `Box16.x_self (b : Box8) : ...` |
+| `name-shape` | The last word of the name promises a conclusion the statement does not have: `_iff` with no `↔`, `_lt` concluding `≤`, `_le` concluding `<`, `_injective` concluding `Surjective`. | `F_injective : Function.Surjective F` |
+| `doc-mislabel` | The docstring names one property of a family ("injective", "monotone", "open"), the conclusion another. | "`F` is injective." on a surjectivity lemma |
+| `doc-refs` | A name in backticks in a docstring matches no declaration, module, tactic, attribute or option. | `` `Nat.not_a_lemma` `` after a rename |
+| `deprecation` | Deprecated in favor of a declaration that does not exist or is itself deprecated. | `old → mid → new`, with `mid` deprecated |
+| `duplicate` | Two theorems with the same statement (up to the names of variables and universes), each proved without the other. | the same lemma proved in two files |
+| `duplicate-sym` | The same, with one stated backwards: `a = b` against `b = a`. | `x + 0 = x` and `x = x + 0` |
+| `duplicate-instance` | Two instances of the same type. | two `Pointed Nat` instances |
+| `dead-private` | A private theorem or definition that nothing refers to. | a helper left behind by a refactor |
 
-`test/run.sh` runs every check on `test/LeanLinterTest/Fixtures.lean`. That file has one example of
-each problem and a correct twin of each, and the script compares the findings with
+`lean-linter --list` prints the checks; `--checks mislabel,doc-refs` runs only some.
+
+Only declarations written by hand are checked. Equation lemmas, matchers, recursors, auxiliary
+proofs and anything else Lean generates are skipped, and so are deprecated declarations. A theorem
+proved from the other one (an `alias`, a `.symm`) is a deliberate second name and is never reported
+as a duplicate.
+
+## Options
+
+```text
+lean-linter [options] Module...
+
+  --checks a,b,...   run only these checks (see --list)
+  --root Prefix      report on modules under Prefix (repeatable); the default is the first
+                     component of each module given, e.g. Mathlib for Mathlib.Order.Basic
+  --json             print findings as JSON lines instead of tab-separated text
+  --list             list the checks and exit
+  --version          print the version and exit
+```
+
+The exit status is 0 if nothing was found, 1 if something was, and 2 on a usage error.
+
+## Reading the findings
+
+The checks compare names and docstrings with statements, and English is looser than Lean, so
+each finding is something to read rather than a verdict.
+
+- **`mislabel`, `namespace`, `name-shape`, `doc-mislabel`, `deprecation`, `duplicate-instance`**
+  are usually right. The exceptions are words with a second meaning: `_odd` naming the parity of
+  an index, "limit" meaning a limit ordinal, `pred` meaning `n - 1`.
+- **`duplicate`, `duplicate-sym`** are exact, but some duplication is on purpose: a second name for
+  dot notation or for people searching under another name. The usual fix is to make one an
+  `alias` of the other, which this check then accepts.
+- **`doc-refs`, `dead-private`** find real rot, mixed with things they cannot see through: notation
+  written in backticks, and lemmas used by a tactic that looks them up by name (`aesop` rules,
+  `simproc`s) without any term mentioning them.
+
+On Mathlib a full run gives a few dozen findings for the first group and hundreds for the others.
+Lean core gives a handful for the first group.
+
+## How it works
+
+`lean-linter` imports the modules you name, the way `lean` does when it elaborates a file that
+imports them. It then reads the resulting environment: every declaration's statement, proof,
+docstring, source position and attributes. Nothing is parsed or elaborated again, so the checks
+see exactly what Lean compiled, including declarations generated by attributes such as
+`to_additive` and `simps`. It needs the library to be built first.
+
+Because it reads `.olean` files, lean-linter has to be built with the same Lean version as the
+library it reads. As a dependency it is built with your project's toolchain automatically; on its
+own, copy the project's `lean-toolchain` before building, as in the quick start. Development
+happens on Lean v4.35.0-rc4.
+
+| Library | Declarations | Time |
+|---|---|---|
+| Lean core (`Init`, `Std`, `Lean`) | 99,000 | ~10 s |
+| Mathlib | 330,000 | ~6 min |
+
+## In CI
+
+Run lean-linter on pull requests and keep only what is new by comparing against a saved baseline:
+
+```yaml
+- name: Lint
+  run: |
+    lake exe lean-linter MyLibrary > findings.tsv || true
+    cut -f1,2 findings.tsv | sort > now.txt
+    sort lint-baseline.txt | comm -13 - now.txt > new.txt
+    if [ -s new.txt ]; then cat new.txt; exit 1; fi
+```
+
+## Development
+
+```bash
+lake build          # the library and the lean-linter executable
+./test/run.sh       # every check against test/LeanLinterTest/Fixtures.lean
+```
+
+`test/LeanLinterTest/Fixtures.lean` has one example of each problem and a correct twin of each.
+`test/run.sh` checks that the linter reports exactly the examples, as listed in
 `test/expected.tsv`.
+
+To add a check, write `def myCheck : Check` in a new file under `LeanLinter/Checks/`. Its
+module docstring should explain what it reports, how it decides, and its known false positives.
+Then add it to `allChecks` in `LeanLinter.lean`, and give it an example and a correct twin in the
+fixtures.
 
 ## License
 
