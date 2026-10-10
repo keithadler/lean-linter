@@ -84,7 +84,7 @@ finding is one JSON object per line instead:
 | `name-shape` | The last word of the name promises a conclusion the statement does not have: `_iff` with no `↔`, `_lt` concluding `≤`, `_le` concluding `<`, `_injective` concluding `Surjective`. | `F_injective : Function.Surjective F` |
 | `doc-mislabel` | The docstring names one property of a family ("injective", "monotone", "open"), the conclusion another. | "`F` is injective." on a surjectivity lemma |
 | `doc-refs` | A name in backticks in a docstring matches no declaration, module, tactic, attribute or option. | `` `Nat.not_a_lemma` `` after a rename |
-| `deprecation` | Deprecated in favor of a declaration that does not exist or is itself deprecated. | `old → mid → new`, with `mid` deprecated |
+| `deprecation` | Deprecated in favor of a declaration that does not exist or is itself deprecated. Lean already warns about this when the alias is declared, so what this finds are the places someone silenced that warning on purpose (`set_option linter.deprecated.deprecatedTarget false`), usually in the middle of a rename. | `old → mid → new`, with `mid` deprecated |
 | `duplicate` | Two theorems with the same statement (up to the names of variables and universes), each proved without the other. | the same lemma proved in two files |
 | `duplicate-sym` | The same, with one stated backwards: `a = b` against `b = a`. | `x + 0 = x` and `x = x + 0` |
 | `duplicate-instance` | Two instances of the same type. | two `Pointed Nat` instances |
@@ -117,7 +117,7 @@ The exit status is 0 if nothing was found, 1 if something was, and 2 on a usage 
 The checks compare names and docstrings with statements, and English is looser than Lean, so
 each finding is something to read rather than a verdict.
 
-- **`mislabel`, `namespace`, `name-shape`, `doc-mislabel`, `deprecation`, `duplicate-instance`**
+- **`mislabel`, `namespace`, `name-shape`, `doc-mislabel`, `duplicate-instance`**
   are usually right. The exceptions are words with a second meaning: `_odd` naming the parity of
   an index, "limit" meaning a limit ordinal, `pred` meaning `n - 1`.
 - **`duplicate`, `duplicate-sym`** are exact, but some duplication is on purpose: a second name for
@@ -126,6 +126,8 @@ each finding is something to read rather than a verdict.
 - **`doc-refs`, `dead-private`** find real rot, mixed with things they cannot see through: notation
   written in backticks, and lemmas used by a tactic that looks them up by name (`aesop` rules,
   `simproc`s) without any term mentioning them.
+
+- **`deprecation`** only reports aliases whose authors switched off Lean's own warning, so on a library that heeds that warning it is nearly silent, and on Mathlib every hit was a rename in progress.
 
 On Mathlib a full run gives a few dozen findings for the first group and hundreds for the others.
 Lean core gives a handful for the first group.
