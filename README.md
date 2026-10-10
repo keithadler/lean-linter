@@ -77,3 +77,7 @@ is a real problem:
 `test/run.sh` runs every check on `test/LeanLinterTest/Fixtures.lean`. That file has one example of
 each problem and a correct twin of each, and the script compares the findings with
 `test/expected.tsv`.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
