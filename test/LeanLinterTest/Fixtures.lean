@@ -5,6 +5,8 @@ report. `test/run.sh` checks the output against `test/expected.tsv`.
 
 namespace Fixtures
 
+universe u
+
 /-! ## `mislabel` -/
 
 def fooLeft (n : Nat) : Nat := n
@@ -42,11 +44,11 @@ theorem F_surj' : Function.Surjective F := fun b => ⟨b, rfl⟩
 /-! ## `doc-refs` -/
 
 /-- Follows from `Fixtures.no_such_lemma_here`; see also `Fixtures.F_surjective`. -/
-theorem docref_demo : True := trivial
+theorem docref_demo : 0 < 1 := Nat.zero_lt_one
 
 /-! ## `deprecation` -/
 
-theorem dep_new : True := trivial
+theorem dep_new : 0 < 2 := Nat.zero_lt_succ 1
 @[deprecated dep_new (since := "2026-01-01")] theorem dep_mid : True := trivial
 @[deprecated dep_mid (since := "2026-01-01")] theorem dep_old : True := trivial
 
@@ -61,7 +63,7 @@ theorem dup_c (a b : Nat) : a + b = b + a := dup_a a b
 
 /-! ## `duplicate-instance` -/
 
-class Pointed (α : Type) where pt : α
+class Pointed (α : Type u) where pt : α
 instance pointedNatA : Pointed Nat := ⟨0⟩
 instance pointedNatB : Pointed Nat := ⟨1⟩
 instance pointedBool : Pointed Bool := ⟨true⟩
@@ -71,5 +73,28 @@ instance pointedBool : Pointed Bool := ⟨true⟩
 private theorem unused_helper : 1 + 1 = 2 := rfl
 private theorem used_helper : 2 + 2 = 4 := rfl
 theorem uses_helper : 2 + 2 = 4 := used_helper
+
+/-! ## `op-mismatch` -/
+
+theorem swapped_mul_law (a b c : Nat) : a + b + c = c + b + a := by omega
+theorem swapped_add_law (a b c : Nat) : a + b + c = b + a + c := by omega
+
+/-! ## `vacuous` -/
+
+theorem vac_stmt : True := trivial
+theorem clash_hyps (p : Prop) (h : p) (h' : ¬p) : 1 = 2 := absurd h h'
+theorem ok_hyps (p q : Prop) (h : p) (h' : q) : p ∧ q := ⟨h, h'⟩
+
+/-! ## `universe` -/
+
+theorem restricted_univ {α : Type} (a : α) : Nonempty α := ⟨a⟩
+theorem general_univ {α : Type u} (a : α) : Nonempty α := ⟨a⟩
+
+/-! ## `doc-iff` -/
+
+/-- A number is positive if and only if it is nonzero. -/
+theorem doc_iff_demo (n : Nat) (h : 0 < n) : n ≠ 0 := by omega
+/-- A number is positive if and only if it is nonzero. -/
+theorem doc_iff_ok (n : Nat) : 0 < n ↔ n ≠ 0 := by omega
 
 end Fixtures

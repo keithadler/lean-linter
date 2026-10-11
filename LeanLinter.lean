@@ -6,6 +6,10 @@ import LeanLinter.Checks.Docs
 import LeanLinter.Checks.Deprecation
 import LeanLinter.Checks.Duplicates
 import LeanLinter.Checks.DeadPrivate
+import LeanLinter.Checks.Operations
+import LeanLinter.Checks.DocShape
+import LeanLinter.Checks.Vacuous
+import LeanLinter.Checks.Universe
 
 /-!
 # lean-linter
@@ -23,6 +27,7 @@ def version : String := "0.1.0"
 /-- Every check, in the order they run and are reported. -/
 def allChecks : List Check :=
   [mislabelCheck, namespaceCheck, nameShapeCheck, docMislabelCheck, docRefsCheck, deprecationCheck,
-   duplicateCheck, duplicateSymCheck, duplicateInstanceCheck, deadPrivateCheck]
+   duplicateCheck, duplicateSymCheck, duplicateInstanceCheck, deadPrivateCheck, opMismatchCheck,
+   docIffCheck, vacuousCheck, universeCheck]
 
 end LeanLinter

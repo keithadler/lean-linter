@@ -89,6 +89,10 @@ finding is one JSON object per line instead:
 | `duplicate-sym` | The same, with one stated backwards: `a = b` against `b = a`. | `x + 0 = x` and `x = x + 0` |
 | `duplicate-instance` | Two instances of the same type. | two `Pointed Nat` instances |
 | `dead-private` | A private theorem or definition that nothing refers to. | a helper left behind by a refactor |
+| `vacuous` | A statement that says nothing: conclusion `True`, a hypothesis `False`, or two hypotheses `p` and `¬p`. Both sides of an `=` being the same term is reported too, since it is usually an abbreviation-unfolding lemma and sometimes a lemma that proves nothing. | `foo (h : p) (h' : ¬p) : 1 = 2` |
+| `universe` | A public theorem or definition with a binder `α : Type` and no universe parameters, so it cannot be used for a type in a higher universe. A file with eight or more is reported once. | `{R : Type}` where its neighbors say `Type*` |
+| `op-mismatch` *(experimental)* | The name says `add`, `mul`, `sub`, `div`, `sum` or `prod`, but the statement uses none of it and uses a confusable one instead. Mathlib's naming is loose enough that most hits are legitimate. | `foo_mul_comm : a + b = b + a` |
+| `doc-iff` *(experimental)* | The docstring says "if and only if", but the statement is not an `↔`. Many hits are docstrings written for the iff version of a lemma that give one direction. | "`n` is positive iff nonzero" on `0 < n → n ≠ 0` |
 
 `lean-linter --list` prints the checks; `--checks mislabel,doc-refs` runs only some.
 
@@ -120,6 +124,9 @@ each finding is something to read rather than a verdict.
 - **`mislabel`, `namespace`, `name-shape`, `doc-mislabel`, `duplicate-instance`**
   are usually right. The exceptions are words with a second meaning: `_odd` naming the parity of
   an index, "limit" meaning a limit ordinal, `pred` meaning `n - 1`.
+- **`vacuous`** found nothing wrong in Mathlib or Lean core: its few hits are tactic-internal lemmas. That is the point of running it, on a formalization someone else wrote and you want to trust.
+- **`universe`** is usually right once tactic, meta-programming and private code is left out. Some small-category statements need `Type` on purpose.
+- **`op-mismatch`, `doc-iff`** are experimental. On Mathlib `op-mismatch` gives about sixty hits of which a handful are real name errors, and `doc-iff` mostly flags docstrings that describe an iff the lemma is one half of.
 - **`duplicate`, `duplicate-sym`** are exact, but some duplication is on purpose: a second name for
   dot notation or for people searching under another name. The usual fix is to make one an
   `alias` of the other, which this check then accepts.
