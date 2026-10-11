@@ -1,5 +1,5 @@
 name = "lean-linter"
-version = "0.1.0"
+version = "0.2.0"
 description = "Find what the type checker cannot: misnamed lemmas, wrong docstrings, dead references, duplicates"
 keywords = ["linter", "mathlib", "lean4", "code-quality"]
 license = "Apache-2.0"
