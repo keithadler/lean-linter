@@ -10,6 +10,8 @@ import LeanLinter.Checks.Operations
 import LeanLinter.Checks.DocShape
 import LeanLinter.Checks.Vacuous
 import LeanLinter.Checks.Universe
+import LeanLinter.Checks.Trust
+import LeanLinter.Checks.Diamond
 
 /-!
 # lean-linter
@@ -28,6 +30,6 @@ def version : String := "0.2.0"
 def allChecks : List Check :=
   [mislabelCheck, namespaceCheck, nameShapeCheck, docMislabelCheck, docRefsCheck, deprecationCheck,
    duplicateCheck, duplicateSymCheck, duplicateInstanceCheck, deadPrivateCheck, opMismatchCheck,
-   docIffCheck, vacuousCheck, universeCheck]
+   docIffCheck, vacuousCheck, universeCheck, trustCheck, diamondCheck]
 
 end LeanLinter

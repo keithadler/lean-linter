@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Two new checks.
+
+- `trust`: `sorry`, user axioms, `native_decide`, `unsafe`, `implemented_by`, `extern` and `opaque`, so a reader can see what a formalization asks them to believe besides the kernel. On Mathlib it lists only `opaque` and `unsafe` meta-programming code.
+- `diamond`: same-typed instances that are not definitionally equal (at instance transparency, then default). None in Mathlib.
+
 ## 0.2.0
 
 Four new checks, bringing the total to fourteen.

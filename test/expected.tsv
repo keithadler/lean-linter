@@ -10,9 +10,16 @@ deprecation	Fixtures.dep_old
 duplicate	Fixtures.dup_a
 duplicate-sym	Fixtures.sym_a
 duplicate-instance	Fixtures.pointedNatA
+duplicate-instance	Fixtures.witBoolA
+duplicate-instance	Fixtures.witNatA
 dead-private	Fixtures.unused_helper
 op-mismatch	Fixtures.swapped_mul_law
 doc-iff	Fixtures.doc_iff_demo
 vacuous	Fixtures.vac_stmt
 vacuous	Fixtures.clash_hyps
 universe	Fixtures.restricted_univ
+trust	Fixtures.ax_demo
+trust	Fixtures.sorry_demo
+trust	Fixtures.native_demo
+diamond	Fixtures.pointedNatA
+diamond	Fixtures.witBoolA

@@ -97,4 +97,19 @@ theorem doc_iff_demo (n : Nat) (h : 0 < n) : n ≠ 0 := by omega
 /-- A number is positive if and only if it is nonzero. -/
 theorem doc_iff_ok (n : Nat) : 0 < n ↔ n ≠ 0 := by omega
 
+/-! ## `trust` -/
+
+axiom ax_demo : 0 < 1
+theorem sorry_demo : 3 + 3 = 6 := sorry
+theorem native_demo : 10 + 10 = 20 := by native_decide
+theorem trust_ok : 4 + 4 = 8 := by omega
+
+/-! ## `diamond` -/
+
+class Wit (α : Type u) where w : Nat
+instance witBoolA : Wit Bool := ⟨0⟩
+instance witBoolB : Wit Bool := ⟨1⟩
+instance witNatA : Wit Nat := ⟨5⟩
+instance witNatB : Wit Nat := ⟨5⟩
+
 end Fixtures
