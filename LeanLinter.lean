@@ -24,7 +24,7 @@ nowhere, things stated twice, and private code nothing uses. See `README.md`.
 namespace LeanLinter
 
 /-- The version of lean-linter. -/
-def version : String := "0.2.0"
+def version : String := "0.3.0"
 
 /-- Every check, in the order they run and are reported. -/
 def allChecks : List Check :=

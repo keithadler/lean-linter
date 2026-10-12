@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+Two new checks, and fewer false positives. The fixes come from running the linter on FloatLib, a
+numerics library, where every finding in `mislabel` and `name-shape` and most in `doc-refs` was wrong.
+
+Fewer false positives:
+
+- `mislabel`: `¬Even n` says `n` is odd, and `¬Odd n` says it is even, so a lemma named `..._odd` with
+  the hypothesis `¬Even n` is no longer reported.
+- `name-shape`: `n + 1 ≤ m` (and `Nat.succ n ≤ m`) is how `n < m` is written on `Nat`, so a `_lt` lemma
+  concluding it is no longer reported. `_pos` after `mono`, `monotone`, `anti`, `antitone`,
+  `strictMono` or `strictAnti` means "on the positives", not "strictly", and is no longer reported.
+- `doc-refs`: a docstring that names the declaration's own parameter, a keyword the project adds to
+  the grammar, a built-in attribute (`implemented_by`), or a stretch from the middle of a module name
+  (`Packed.Product` for `Foo.Packed.Product.Proof`) is no longer reported.
+
+Each of these has a regression fixture in `test/`, and `wrong_odd` stays reported as a control.
 
 Two new checks.
 

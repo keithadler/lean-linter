@@ -22,6 +22,12 @@ name obtained by swapping one word of `c`'s last component for its opposite (`Le
 Instances and theorems in the statement are skipped: they are implicit arguments and proofs, not
 what a name refers to.
 
+## Negation
+
+`¬Even n` says `n` is odd, and `¬Odd n` says it is even, so a lemma whose name says `odd` and whose
+hypothesis is `¬Even n` is not mislabelled. Only these two words are treated this way: `¬Monotone`
+is not `Antitone`.
+
 ## False positives
 
 The opposite words also have unrelated meanings. `_odd` can name the parity of an index whose
@@ -67,6 +73,29 @@ are proofs, so neither is. -/
 private def nameable (env : Environment) (c : Name) : Bool :=
   !(Meta.isInstanceCore env c || (lastString c).startsWith "inst" || (env.find? c).any (·.isTheorem))
 
+/-- The constants `c` that occur as `¬ c ...` in `e`. -/
+def negatedHeads (e : Expr) : Std.HashSet Name :=
+  let rec go (e : Expr) (acc : Std.HashSet Name) : Std.HashSet Name :=
+    match e with
+    | .app f a =>
+      let acc := if f.isConstOf ``Not then
+        match a.getAppFn.constName? with
+        | some c => acc.insert c
+        | none => acc
+      else acc
+      go a (go f acc)
+    | .forallE _ t b _ => go b (go t acc)
+    | .lam _ t b _ => go b (go t acc)
+    | .mdata _ b => go b acc
+    | .letE _ t v b _ => go b (go v (go t acc))
+    | .proj _ _ b => go b acc
+    | _ => acc
+  go e {}
+
+/-- `Even`/`Odd`: the one pair where negating a predicate gives its opposite. -/
+def parityWords (a b : String) : Bool :=
+  (lowFirst a == "even" && lowFirst b == "odd") || (lowFirst a == "odd" && lowFirst b == "even")
+
 def mislabel (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
@@ -74,11 +103,13 @@ def mislabel (ctx : Ctx) : IO (Array Finding) := do
     let words := nameTokens d.name
     let used := usedConstants d.info.type
     let usedLast : Std.HashSet String := used.foldl (·.insert <| lowFirst <| lastString ·) {}
+    let negated := negatedHeads d.info.type
     for c in used do
       let last := lastString c
       if last.length < 3 || words.contains (lowFirst last) || !nameable ctx.env c then continue
       for m in mirrors last do
         let mirror := c.getPrefix.str m
+        if negated.contains c && parityWords last m then continue
         if words.contains (lowFirst m) && !usedLast.contains (lowFirst m) && ctx.env.contains mirror then
           out := out.push <| ctx.finding "mislabel" d
             s!"the name says `{mirror}` but the statement uses `{c}` and never `{m}`"

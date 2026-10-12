@@ -19,6 +19,11 @@ the strict version its name promises does not exist.
 
 ## What is not
 
+`n + 1 ≤ m` is how `n < m` is written on `Nat`, so a `_lt` lemma concluding it is correct. In
+`foo_mono_pos` the word `pos` says where the lemma holds ("on the positives"), not that it
+concludes something strict, so `_pos` after `mono`, `monotone`, `anti`, `antitone`, `strictMono`
+or `strictAnti` is not read as strict.
+
 Words after `_of_` name hypotheses (`surjective_of_injective`), so only the words before the
 first `of` are read. A lemma whose conclusion is its own namespace (`Antitone.comp_monotone`
 concluding `Antitone`) uses the namespace for dot notation and is skipped.
@@ -32,11 +37,26 @@ namespace LeanLinter
 def propertyFamilies : List (List String) :=
   [["injective", "surjective", "bijective"], ["monotone", "antitone", "strictMono", "strictAnti"]]
 
+/-- Words after which `pos` means "on the positives" and says nothing about strictness. -/
+def monoWords : List String :=
+  ["mono", "monotone", "anti", "antitone", "strictMono", "strictAnti", "monotoneOn", "antitoneOn"]
+
+/-- Is `c` of the form `x + 1 ≤ y` or `Nat.succ x ≤ y`, which is `x < y` written out? -/
+def isSuccLe (c : Expr) : Bool :=
+  match c.getAppFn, c.getAppArgs with
+  | .const ``LE.le _, #[_, _, lhs, _] =>
+    lhs.isAppOf ``Nat.succ ||
+      (lhs.isAppOf ``HAdd.hAdd && match lhs.getAppArgs.back? with
+        | some r => r.isAppOf ``OfNat.ofNat && r.getAppNumArgs ≥ 2 && (r.getArg! 1).rawNatLit? == some 1
+        | none => false)
+  | _, _ => false
+
 /-- What is wrong, if anything, with a lemma whose name ends in `word` and whose conclusion `c` has
 head constant `head`. -/
-def shapeProblem? (word : String) (c : Expr) (head : Name) : Option String :=
+def shapeProblem? (word : String) (c : Expr) (head : Name) (prev : Option String := none) : Option String :=
   let h := lowFirst (lastString head)
-  if (word == "lt" || word == "pos") && head == ``LE.le && !mentionsLast c "lt" then
+  if (word == "lt" || word == "pos") && head == ``LE.le && !mentionsLast c "lt" && !isSuccLe c
+      && !(word == "pos" && prev.any (monoWords.contains ·)) then
     some s!"the name ends in `_{word}` (strict), but the conclusion is a `≤`"
   else if (word == "le" || word == "nonneg") && head == ``LT.lt then
     some s!"the name ends in `_{word}`, but the conclusion is a strict `<`"
@@ -53,11 +73,13 @@ def nameShape (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
     unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
-    let some word := ((nameTokens d.name).toList.takeWhile (· != "of")).getLast? | continue
+    let toks := (nameTokens d.name).toList.takeWhile (· != "of")
+    let some word := toks.getLast? | continue
+    let prev := if toks.length ≥ 2 then toks[toks.length - 2]? else none
     let c := conclusion d.info.type
     let some head := c.getAppFn.constName? | continue
     if head == (userName d.name).getPrefix then continue
-    if let some message := shapeProblem? word c head then
+    if let some message := shapeProblem? word c head prev then
       out := out.push <| ctx.finding "name-shape" d message
   return out
 

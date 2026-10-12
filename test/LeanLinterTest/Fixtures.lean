@@ -112,4 +112,26 @@ instance witBoolB : Wit Bool := ⟨1⟩
 instance witNatA : Wit Nat := ⟨5⟩
 instance witNatB : Wit Nat := ⟨5⟩
 
+/-! ## Regressions: lemmas that look wrong to a name-based check but are right
+Found by running the linter on FloatLib, where each was a false positive. -/
+
+namespace ParityFix
+def Even (n : Nat) : Prop := n % 2 = 0
+def Odd (n : Nat) : Prop := n % 2 = 1
+/-- Not reported: `¬Even n` says `n` is odd, so the name is right. -/
+theorem round_half_odd (n : Nat) (_h : ¬Even n) : n + 0 = n := rfl
+/-- Reported: the name says `odd`, the hypothesis is `Even` itself. -/
+theorem wrong_odd (n : Nat) (_h : Even n) : n + 0 = n := rfl
+end ParityFix
+
+/-- Not reported: `n + 1 ≤ m` is how `n < m` is written on `Nat`. -/
+theorem succ_form_lt (n m : Nat) (h : n < m) : n + 1 ≤ m := h
+/-- Not reported: `pos` after `mono` says "on the positives", not "strictly". -/
+theorem step_mono_pos (a b : Nat) (h : a ≤ b) : a ≤ b := h
+
+/-- `my_param` is the hypothesis; it is the lemma's own parameter, not a missing declaration. -/
+theorem doc_param_ok (my_param : 0 < 5) : 0 < 5 := my_param
+/-- Marked with `implemented_by` elsewhere: an attribute, not a missing declaration. -/
+theorem doc_attr_ok : 0 < 7 := by omega
+
 end Fixtures

@@ -1,5 +1,6 @@
 mislabel	Fixtures.fooLeft_eq
 mislabel	Fixtures.F_injective
+mislabel	Fixtures.ParityFix.wrong_odd
 namespace	Fixtures.Box16.x_self
 name-shape	Fixtures.F_injective
 name-shape	Fixtures.le_self_add_three_iff

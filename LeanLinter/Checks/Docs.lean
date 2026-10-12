@@ -83,8 +83,16 @@ def knownNames (env : Environment) : IO (Std.HashSet String) := do
     known := addSuffixes known n
   for m in env.header.moduleNames do
     known := addSuffixes known m
+    -- a docstring may name a module by a stretch from its middle: `Packed.Product` for
+    -- `Foo.Packed.Product.Proof`
+    let parts := (userName m).components.map toString
+    for i in [0:parts.length] do
+      for j in [i + 1:parts.length + 1] do
+        known := known.insert (".".intercalate ((parts.drop i).take (j - i)))
   for (n, _) in (← getOptionDecls).toList do
     known := addSuffixes known n
+  for a in (← getBuiltinAttributeNames) do
+    known := known.insert ("~" ++ normalizeWord (toString a))
   for (kind, _) in (Parser.parserExtension.getState env).kinds.toList do
     let w := normalizeWord (lastString kind)
     known := known.insert ("~" ++ w)
@@ -115,13 +123,30 @@ def resolves (known : Std.HashSet String) (r : String) : Bool :=
     || (parts.length > 1 && (parts.head!.length ≤ 3 || parts.head!.front.isLower) && known.contains last)
     || (parts.length > 2 && known.contains (".".intercalate (parts.take 2)) && known.contains last)
 
+/-- The names of the binders in a declaration's type: a docstring may call its own parameters by
+name (`width_eq` lets parameterized APIs ...). -/
+partial def binderNames (e : Expr) : Std.HashSet String :=
+  let rec go (e : Expr) (acc : Std.HashSet String) : Std.HashSet String :=
+    match e with
+    | .forallE n t b _ => go b (go t (acc.insert (toString n)))
+    | .lam n t b _ => go b (go t (acc.insert (toString n)))
+    | .mdata _ b => go b acc
+    | _ => acc
+  go e {}
+
+/-- A docstring mentioning one of the declaration's own parameters, or a keyword the project adds to
+the grammar (`float_format`), is not naming a missing declaration. -/
+def isLocalOrToken (env : Environment) (locals : Std.HashSet String) (r : String) : Bool :=
+  locals.contains r || locals.contains (r.splitOn ".").head!
+    || ((Parser.getTokenTable env).find? r).isSome
+
 def docRefs (ctx : Ctx) : IO (Array Finding) := do
   let known ← knownNames ctx.env
   let mut out := #[]
   for d in ctx.decls do
     let some doc ← findDocString? ctx.env d.name (includeBuiltin := false) | continue
     for r in docReferences doc do
-      unless resolves known r do
+      unless resolves known r || isLocalOrToken ctx.env (binderNames d.info.type) r do
         out := out.push <| ctx.finding "doc-refs" d s!"the docstring mentions `{r}`, which does not exist"
   return out
 
