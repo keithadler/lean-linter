@@ -24,3 +24,4 @@ trust	Fixtures.sorry_demo
 trust	Fixtures.native_demo
 diamond	Fixtures.pointedNatA
 diamond	Fixtures.witBoolA
+proof-clone	Fixtures.clone_a

@@ -134,4 +134,17 @@ theorem doc_param_ok (my_param : 0 < 5) : 0 < 5 := my_param
 /-- Marked with `implemented_by` elsewhere: an attribute, not a missing declaration. -/
 theorem doc_attr_ok : 0 < 7 := by omega
 
+/-! ## `proof-clone` -/
+
+/-- Copied below with an unused hypothesis added, so the statements differ and the proofs do not. -/
+theorem clone_a (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d + 0 + 1 + 1 :=
+  Nat.le_trans (Nat.add_le_add h h2)
+    (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_trans (Nat.le_succ _) (Nat.le_succ _)))
+theorem clone_b (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) (_h3 : True) : a + c ≤ b + d + 0 + 1 + 1 :=
+  Nat.le_trans (Nat.add_le_add h h2)
+    (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_trans (Nat.le_succ _) (Nat.le_succ _)))
+/-- Not reported: a different argument. -/
+theorem clone_other (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d + 1 :=
+  Nat.le_succ_of_le (Nat.add_le_add h h2)
+
 end Fixtures

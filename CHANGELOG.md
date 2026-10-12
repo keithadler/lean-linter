@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+One new check.
+
+- `proof-clone`: two theorems with different statements whose proofs apply the same lemmas in the same order (five or more, plumbing such as `Eq.symm` and `congrArg` left out). It reads the compiled proof terms, so it is not fooled by renamed variables or reformatted tactic scripts. On Lean core it lists 247 groups.
+
 ## 0.3.0
 
 Two new checks, and fewer false positives. The fixes come from running the linter on FloatLib, a

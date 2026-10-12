@@ -12,6 +12,7 @@ import LeanLinter.Checks.Vacuous
 import LeanLinter.Checks.Universe
 import LeanLinter.Checks.Trust
 import LeanLinter.Checks.Diamond
+import LeanLinter.Checks.ProofClone
 
 /-!
 # lean-linter
@@ -24,12 +25,12 @@ nowhere, things stated twice, and private code nothing uses. See `README.md`.
 namespace LeanLinter
 
 /-- The version of lean-linter. -/
-def version : String := "0.3.0"
+def version : String := "0.4.0"
 
 /-- Every check, in the order they run and are reported. -/
 def allChecks : List Check :=
   [mislabelCheck, namespaceCheck, nameShapeCheck, docMislabelCheck, docRefsCheck, deprecationCheck,
    duplicateCheck, duplicateSymCheck, duplicateInstanceCheck, deadPrivateCheck, opMismatchCheck,
-   docIffCheck, vacuousCheck, universeCheck, trustCheck, diamondCheck]
+   docIffCheck, vacuousCheck, universeCheck, trustCheck, diamondCheck, proofCloneCheck]
 
 end LeanLinter
