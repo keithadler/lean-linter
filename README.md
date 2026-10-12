@@ -36,7 +36,7 @@ In a Lake project, add the dependency to `lakefile.toml`:
 [[require]]
 name = "lean-linter"
 git = "https://github.com/keithadler/lean-linter"
-rev = "v0.3.0"
+rev = "v0.4.0"
 ```
 
 Then build your library and lint it:
