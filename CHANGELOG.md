@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+`proof-clone` is split in two. On Lean core the 0.4.0 check listed 247 groups, 137 of which were a family of lemmas written on purpose (`sum_push` and `prod_push`, `Array.any_eq'` and `Vector.any_eq'`: names that differ in one word).
+
+- `proof-clone` now lists only the groups whose names differ in more than one word: about 110 on Lean core.
+- `proof-variant` lists the one-word families, listed apart.
+- Each group is reported at its first theorem in file order, so the output is stable.
+
 ## 0.4.0
 
 One new check.

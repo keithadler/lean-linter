@@ -9,6 +9,10 @@ import LeanLinter.Checks.Duplicates
   argument for `ℕ` and for `ℤ`, or for a statement and the same statement with one more hypothesis.
   Either the argument deserves a lemma of its own, or the two statements are one fact in two
   forms and one should be derived from the other.
+* `proof-variant`: the same, where the names differ in a single word (`sum_push` and `prod_push`,
+  `max_add_left` and `max_add_right`, `Array.any_eq'` and `Vector.any_eq'`). Those are almost
+  always a family of lemmas written on purpose, so they are listed apart and are worth a look only
+  to see whether a shared lemma would shorten the family.
 
 How it decides. A proof is read as the list of distinct theorems it applies, in the order the term
 first uses them, leaving out the plumbing every proof is full of (`Eq.symm`, `congrArg`,
@@ -47,8 +51,22 @@ def minLemmas : Nat := 5
 private def describeGroup (g : Array Decl) : String :=
   ", ".intercalate (g.map fun d => s!"`{userName d.name}` ({d.module}:{d.line})").toList
 
-/-- Theorems with different statements that apply the same lemmas in the same order. -/
-def proofClones (ctx : Ctx) : IO (Array Finding) := do
+/-- The words of a declaration's name: its components, each split at `_`. -/
+private def nameWords (n : Name) : Array String :=
+  (toString (userName n)).splitOn "." |>.foldl (fun acc c => acc ++ c.splitOn "_") [] |>.filter (· ≠ "") |>.toArray
+
+/-- Do all the names have the same number of words, and differ in at most one position? -/
+def isVariantFamily (names : Array Name) : Bool :=
+  let ws := names.map nameWords
+  match ws[0]? with
+  | none => false
+  | some w0 =>
+    ws.all (·.size == w0.size) &&
+      (List.range w0.size).countP (fun i => ws.any fun w => w[i]! != w0[i]!) ≤ 1
+
+/-- The groups of theorems with different statements that apply the same lemmas in the same order,
+split into those whose names differ in one word (`variants`) and the rest. -/
+def proofCloneGroups (ctx : Ctx) (variants : Bool) : Array (Nat × Array Decl) := Id.run do
   let mut groups : Std.HashMap (Array Name) (Array Decl) := {}
   for d in ctx.decls do
     unless d.info.isTheorem && !ctx.isDeprecated d.name && !Meta.isInstanceCore ctx.env d.name do
@@ -64,14 +82,29 @@ def proofClones (ctx : Ctx) : IO (Array Finding) := do
     if g.size < 2 || sources.length < 2 || statements.length < 2 then continue
     let independent := g.filter (!mentionsAny · (g.map (·.name)))
     if independent.size < 2 then continue
-    out := out.push <| ctx.finding "proof-clone" independent[0]!
-      s!"different statements, but the proofs apply the same {key.size} lemmas in the same order: {describeGroup independent}"
+    if isVariantFamily (independent.map (·.name)) != variants then continue
+    let ordered := independent.qsort fun a b =>
+      a.module.toString < b.module.toString || (a.module == b.module && a.line < b.line)
+    out := out.push (key.size, ordered)
+  return out
+
+def proofClones (variants : Bool) (ctx : Ctx) : IO (Array Finding) := do
+  let check := if variants then "proof-variant" else "proof-clone"
+  let what := if variants then "a family of variants" else "the same argument under different names"
+  let out := (proofCloneGroups ctx variants).map fun (n, g) =>
+    ctx.finding check g[0]!
+      s!"different statements, but the proofs apply the same {n} lemmas in the same order ({what}): {describeGroup g}"
   return out.qsort fun a b =>
     a.module.toString < b.module.toString || (a.module == b.module && a.line < b.line)
 
 def proofCloneCheck : Check where
   name := "proof-clone"
-  summary := "two theorems with different statements whose proofs apply the same lemmas in the same order"
-  run := proofClones
+  summary := "two theorems with different statements and different names whose proofs apply the same lemmas in the same order"
+  run := proofClones false
+
+def proofVariantCheck : Check where
+  name := "proof-variant"
+  summary := "the same, where the names differ in one word: a family of lemmas written on purpose"
+  run := proofClones true
 
 end LeanLinter

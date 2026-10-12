@@ -143,6 +143,17 @@ theorem clone_a (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d +
 theorem clone_b (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) (_h3 : True) : a + c ≤ b + d + 0 + 1 + 1 :=
   Nat.le_trans (Nat.add_le_add h h2)
     (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_trans (Nat.le_succ _) (Nat.le_succ _)))
+/-- Reported as `proof-clone`: the same proof as `clone_a`, under a name that is not one word away. -/
+theorem copied_elsewhere_far (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) (_h3 : 0 = 0) : a + c ≤ b + d + 0 + 1 + 1 :=
+  Nat.le_trans (Nat.add_le_add h h2)
+    (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_trans (Nat.le_succ _) (Nat.le_succ _)))
+/-- Reported as `proof-variant`: the names differ in one word, as in a family written on purpose. -/
+theorem family_left (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d + 1 + 0 + 1 :=
+  Nat.le_trans (Nat.add_le_add h h2)
+    (Nat.le_trans (Nat.le_succ _) (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_succ _)))
+theorem family_right (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) (_h3 : 0 = 0) : a + c ≤ b + d + 1 + 0 + 1 :=
+  Nat.le_trans (Nat.add_le_add h h2)
+    (Nat.le_trans (Nat.le_succ _) (Nat.le_trans (Nat.le_of_eq (Nat.add_zero _).symm) (Nat.le_succ _)))
 /-- Not reported: a different argument. -/
 theorem clone_other (a b c d : Nat) (h : a ≤ b) (h2 : c ≤ d) : a + c ≤ b + d + 1 :=
   Nat.le_succ_of_le (Nat.add_le_add h h2)

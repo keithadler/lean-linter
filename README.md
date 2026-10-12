@@ -36,7 +36,7 @@ In a Lake project, add the dependency to `lakefile.toml`:
 [[require]]
 name = "lean-linter"
 git = "https://github.com/keithadler/lean-linter"
-rev = "v0.4.0"
+rev = "v0.5.0"
 ```
 
 Then build your library and lint it:
@@ -95,7 +95,8 @@ finding is one JSON object per line instead:
 | `doc-iff` *(experimental)* | The docstring says "if and only if", but the statement is not an `↔`. Many hits are docstrings written for the iff version of a lemma that give one direction. | "`n` is positive iff nonzero" on `0 < n → n ≠ 0` |
 | `trust` | What the declaration asks you to believe besides Lean's kernel: `sorry`, a user `axiom`, `native_decide`, `unsafe`, `implemented_by`, `extern`, an `opaque` constant. | `theorem t : 3 + 3 = 6 := sorry` |
 | `diamond` | Two instances of one type that are not definitionally equal, so instance search picks one by import order. | two `Wit Bool` instances giving different values |
-| `proof-clone` | Two theorems that state different things, whose compiled proofs apply the same five or more lemmas in the same order: an argument copied and edited, for `Array` and for `Vector`, or for a statement and the same with one more hypothesis. Tactic-written terms are mostly too different to match. | `any_eq'` for `Array` and for `Vector` |
+| `proof-clone` | Two theorems with different statements and names, whose compiled proofs apply the same five or more lemmas in the same order: an argument copied and edited, for `Array` and for `Vector`, or for a statement and the same with one more hypothesis. Tactic-written terms are mostly too different to match. | `any_eq'` for `Array` and for `Vector` |
+| `proof-variant` | The same, where the names differ in one word (`sum_push` and `prod_push`, `Array.any_eq'` and `Vector.any_eq'`): a family written on purpose, listed apart so `proof-clone` stays the short list. | `max_add_left` and `max_add_right` |
 
 `lean-linter --list` prints the checks; `--checks mislabel,doc-refs` runs only some.
 
@@ -130,7 +131,7 @@ each finding is something to read rather than a verdict.
 - **`vacuous`** found nothing wrong in Mathlib or Lean core: its few hits are tactic-internal lemmas. That is the point of running it, on a formalization someone else wrote and you want to trust.
 - **`trust`** lists a project's to-do list (`sorry`, axioms, `native_decide`). On Mathlib it reports only `opaque` and `unsafe` declarations, which are meta-programming code, and no `sorry`, axiom or `native_decide`.
 - **`diamond`** found no instance diamonds in Mathlib: every same-typed pair it compared is definitionally equal.
-- **`proof-clone`** is exact about what it compares, which is the lemmas a proof applies and their order, not whether two arguments are the same. Run on Lean core it lists 247 groups, most of them one argument made for two types, which is by design in a library with parallel `Array` and `Vector` APIs. The fix is usually a shared lemma, or to leave it.
+- **`proof-clone`, `proof-variant`** are exact about what they compare, which is the lemmas a proof applies and their order, not whether two arguments are the same. On Lean core `proof-clone` lists about 110 groups and `proof-variant` about 140, nearly all of them real shared arguments: the variants are a family on purpose, and the clones are where a shared lemma would help. Tactic-written terms mostly differ from one another and are not matched.
 - **`universe`** is usually right once tactic, meta-programming and private code is left out. Some small-category statements need `Type` on purpose.
 - **`op-mismatch`, `doc-iff`** are experimental. On Mathlib `op-mismatch` gives about sixty hits of which a handful are real name errors, and `doc-iff` mostly flags docstrings that describe an iff the lemma is one half of.
 - **`duplicate`, `duplicate-sym`** are exact, but some duplication is on purpose: a second name for
