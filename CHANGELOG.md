@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+Lean 4.35.0. The linter now builds on Lean 4.35.0 (it was developed on 4.35.0-rc4), and its test, 28 findings on the fixtures, passes there. No change to the checks.
+
 ## 0.5.0
 
 `proof-clone` is split in two. On Lean core the 0.4.0 check listed 247 groups, 137 of which were a family of lemmas written on purpose (`sum_push` and `prod_push`, `Array.any_eq'` and `Vector.any_eq'`: names that differ in one word).
