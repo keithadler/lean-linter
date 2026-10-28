@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2
 
 Builds on older Lean. Lean Studio builds this linter with the Lean version of the project being checked, and `ConstantInfo.isTheorem` does not exist before 4.35, so on Lean 4.29.1 nine checks failed to compile and the linter did not run at all. The checks now use their own `ConstantInfo.isThm`, which matches the theorem constructor. The test passes with 28 findings on 4.29.1 and 4.36.0-rc1. No change to what the checks report.
 
