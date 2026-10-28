@@ -44,7 +44,7 @@ def negates (a b : Expr) (gap : Nat) : Bool :=
 def vacuous (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     let words := nameTokens d.name
     if words.any intendedTrivial.contains || ctx.env.isProjectionFn d.name then continue
     let c := conclusion d.info.type

@@ -71,7 +71,7 @@ def mirrors (s : String) : List String :=
 /-- Is `c` something a lemma's name could refer to? Instances are implicit arguments and theorems
 are proofs, so neither is. -/
 private def nameable (env : Environment) (c : Name) : Bool :=
-  !(Meta.isInstanceCore env c || (lastString c).startsWith "inst" || (env.find? c).any (·.isTheorem))
+  !(Meta.isInstanceCore env c || (lastString c).startsWith "inst" || (env.find? c).any (·.isThm))
 
 /-- The constants `c` that occur as `¬ c ...` in `e`. -/
 def negatedHeads (e : Expr) : Std.HashSet Name :=
@@ -99,7 +99,7 @@ def parityWords (a b : String) : Bool :=
 def mislabel (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     let words := nameTokens d.name
     let used := usedConstants d.info.type
     let usedLast : Std.HashSet String := used.foldl (·.insert <| lowFirst <| lastString ·) {}

@@ -40,7 +40,7 @@ partial def owner? (candidates : NameSet) (n : Name) : Option Name :=
 
 def deadPrivate (ctx : Ctx) : IO (Array Finding) := do
   let candidates := ctx.decls.filter fun d =>
-    isPrivateName d.name && (d.info.isTheorem || d.info.isDefinition)
+    isPrivateName d.name && (d.info.isThm || d.info.isDefinition)
       && !Meta.isInstanceCore ctx.env d.name && !isMetaLevel d.info
   let candidateSet : NameSet := candidates.foldl (·.insert ·.name) {}
   -- For each candidate, the owners of the constants that mention it (a constant that is not

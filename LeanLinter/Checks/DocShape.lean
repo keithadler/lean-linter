@@ -30,7 +30,7 @@ def saysIff (doc : String) : Bool :=
 def docIff (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     let c := conclusion d.info.type
     if c.getAppFn.constName? == some ``Iff || mentionsLast d.info.type "Iff" then continue
     -- `a = b` between `Bool`s is how Lean states an `↔` about decidable predicates

@@ -65,7 +65,7 @@ def weakSiblings (a b : Name) : Bool :=
 def namespaceMismatch (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless (d.info.isTheorem || Meta.isInstanceCore ctx.env d.name) && !ctx.isDeprecated d.name do
+    unless (d.info.isThm || Meta.isInstanceCore ctx.env d.name) && !ctx.isDeprecated d.name do
       continue
     let ns := (userName d.name).getPrefix
     let some nsInfo := ctx.env.find? ns | continue

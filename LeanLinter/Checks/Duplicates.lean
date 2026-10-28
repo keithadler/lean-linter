@@ -70,7 +70,7 @@ private def describe (g : Array Decl) : String :=
 appear once the two sides of `=` and `↔` are put in order. -/
 def duplicates (symmetric : Bool) (ctx : Ctx) : IO (Array Finding) := do
   let isTarget (d : Decl) :=
-    d.info.isTheorem && !ctx.isDeprecated d.name && !Meta.isInstanceCore ctx.env d.name
+    d.info.isThm && !ctx.isDeprecated d.name && !Meta.isInstanceCore ctx.env d.name
   let exact := duplicateGroups ctx (normalizedType ·.info) isTarget
   let groups :=
     if symmetric then

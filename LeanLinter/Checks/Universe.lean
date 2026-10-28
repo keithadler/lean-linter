@@ -38,7 +38,7 @@ def isMetaModule (m : Name) : Bool :=
 def universeRestricted (ctx : Ctx) : IO (Array Finding) := do
   let mut byModule : Std.HashMap Name (Array Decl) := {}
   for d in ctx.decls do
-    unless (d.info.isTheorem || d.info.isDefinition) && !ctx.isDeprecated d.name do continue
+    unless (d.info.isThm || d.info.isDefinition) && !ctx.isDeprecated d.name do continue
     if isPrivateName d.name || isMetaModule d.module || !d.info.levelParams.isEmpty then continue
     if (binderDomains' d.info.type).any isTypeZero then
       byModule := byModule.insert d.module ((byModule.getD d.module #[]).push d)

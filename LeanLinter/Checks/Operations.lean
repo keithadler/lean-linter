@@ -63,7 +63,7 @@ def hasTwin (env : Environment) (n : Name) : Bool :=
 def opMismatch (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     -- words after `of` describe hypotheses, and `neg` in `ediv_neg_of_neg` means "negative"
     let all := nameTokens d.name |>.map fun w => String.ofList (w.toList.filter (· != '\''))
     let words := all.toList.takeWhile (· != "of") |>.toArray

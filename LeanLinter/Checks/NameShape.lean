@@ -72,7 +72,7 @@ def shapeProblem? (word : String) (c : Expr) (head : Name) (prev : Option String
 def nameShape (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     let toks := (nameTokens d.name).toList.takeWhile (· != "of")
     let some word := toks.getLast? | continue
     let prev := if toks.length ≥ 2 then toks[toks.length - 2]? else none

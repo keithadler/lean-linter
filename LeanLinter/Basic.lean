@@ -13,6 +13,12 @@ helpers they use to read names and statements.
 
 open Lean
 
+/-- `true` for theorems. `ConstantInfo.isTheorem` only exists in newer Lean, and Lean Studio builds
+this linter with whatever toolchain the checked project uses, so match the constructor instead. -/
+def Lean.ConstantInfo.isThm : ConstantInfo → Bool
+  | .thmInfo _ => true
+  | _ => false
+
 namespace LeanLinter
 
 /-! ## Findings, declarations and checks -/

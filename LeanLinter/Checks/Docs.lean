@@ -42,7 +42,7 @@ def docFamilies : List (List (String × Name)) :=
 def docMislabel (ctx : Ctx) : IO (Array Finding) := do
   let mut out := #[]
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name do continue
+    unless d.info.isThm && !ctx.isDeprecated d.name do continue
     let some head := (conclusion d.info.type).getAppFn.constName? | continue
     let some doc ← findDocString? ctx.env d.name (includeBuiltin := false) | continue
     let words := docWords doc

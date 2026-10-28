@@ -69,7 +69,7 @@ split into those whose names differ in one word (`variants`) and the rest. -/
 def proofCloneGroups (ctx : Ctx) (variants : Bool) : Array (Nat × Array Decl) := Id.run do
   let mut groups : Std.HashMap (Array Name) (Array Decl) := {}
   for d in ctx.decls do
-    unless d.info.isTheorem && !ctx.isDeprecated d.name && !Meta.isInstanceCore ctx.env d.name do
+    unless d.info.isThm && !ctx.isDeprecated d.name && !Meta.isInstanceCore ctx.env d.name do
       continue
     let some v := d.info.value? (allowOpaque := true) | continue
     let key := lemmaSequence ctx.env v
