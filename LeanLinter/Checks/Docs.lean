@@ -79,8 +79,11 @@ def knownNames (env : Environment) : IO (Std.HashSet String) := do
     let parts := (userName n).components.map toString
     (List.range parts.length).foldl (fun s i => s.insert (".".intercalate (parts.drop i))) s
   let mut known : Std.HashSet String := {}
-  for (n, _) in env.constants.map₁.toList do
-    known := addSuffixes known n
+  -- Imported constants, read module by module: `env.constants.map₁` became a trie in Lean 4.37, while
+  -- `ModuleData.constNames` is the same on every Lean the linter builds with.
+  for md in env.header.moduleData do
+    for n in md.constNames do
+      known := addSuffixes known n
   for m in env.header.moduleNames do
     known := addSuffixes known m
     -- a docstring may name a module by a stretch from its middle: `Packed.Product` for

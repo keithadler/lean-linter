@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4
+
+Builds on Lean 4.37. In 4.37 the imported constants of an environment are stored in a trie, and `env.constants.map₁.toList`, which the `doc-refs` check used to collect every known name, no longer exists. The check now reads each imported module's `constNames`, which every Lean the linter builds with has. The test passes with 28 findings on 4.29.1, 4.36.0 and 4.37.0-rc1. No change to what the checks report.
+
 ## 0.5.3
 
 Lean 4.36.0. The linter now builds on Lean 4.36.0, and its test, 28 findings on the fixtures, passes there. No change to the checks.
